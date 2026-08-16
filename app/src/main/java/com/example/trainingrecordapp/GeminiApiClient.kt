@@ -204,11 +204,8 @@ class GeminiApiClient(private val apiKey: String) {
         if (cached.isNotEmpty()) return cached
         synchronized(modelCacheLock) {
             if (cachedModelCandidates.isNotEmpty()) return cachedModelCandidates
-        }
-        val discovered = fetchSupportedModelPaths()
-        if (discovered.isEmpty()) return emptyList()
-        synchronized(modelCacheLock) {
-            if (cachedModelCandidates.isEmpty()) {
+            val discovered = fetchSupportedModelPaths()
+            if (discovered.isNotEmpty()) {
                 cachedModelCandidates = discovered
             }
             return cachedModelCandidates
