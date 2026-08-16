@@ -122,10 +122,7 @@ class GeminiApiClient(private val apiKey: String) {
                             return@use
                         }
 
-                        val isTransientError = response.code == 429 || response.code in 500..599
-                        if (!isTransientError) {
-                            return@withContext Result.failure(lastError!!)
-                        }
+                        return@withContext Result.failure(lastError!!)
                     }
                 }
 
