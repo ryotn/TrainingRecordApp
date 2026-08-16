@@ -43,6 +43,8 @@
     <!-- Health Connect -->
     <string name="health_connect_unavailable_title">ヘルスコネクト未インストール</string>
     <string name="health_connect_unavailable_message">ヘルスコネクトアプリがインストールされていません。\nGoogle Play Storeからインストールしてください。</string>
+    <string name="health_connect_update_required_title">ヘルスコネクトの更新が必要です</string>
+    <string name="health_connect_update_required_message">ヘルスコネクトを最新の状態に更新してください。\nGoogle Play Storeを開きます。</string>
     <string name="saved_to_health_connect">ヘルスコネクトに保存しました</string>
     <string name="save_failed">保存に失敗しました: %s</string>
 

@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 object HealthConnectManager {
+    private const val HEALTH_CONNECT_PACKAGE_NAME = "com.google.android.apps.healthdata"
 
     val REQUIRED_PERMISSIONS = setOf(
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
@@ -22,13 +23,12 @@ object HealthConnectManager {
         HealthPermission.getReadPermission(WeightRecord::class)
     )
 
-    fun isAvailable(context: Context): Boolean {
-        return HealthConnectClient.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
-    }
+    fun getSdkStatus(context: Context): Int =
+        HealthConnectClient.getSdkStatus(context, HEALTH_CONNECT_PACKAGE_NAME)
 
-    fun openHealthConnectPlayStore(context: Context) {
+    fun openHealthConnectSettings(context: Context) {
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+            data = Uri.parse("market://details?id=$HEALTH_CONNECT_PACKAGE_NAME&url=healthconnect%3A%2F%2Fonboarding")
             setPackage("com.android.vending")
         }
         context.startActivity(intent)

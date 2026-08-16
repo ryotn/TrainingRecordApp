@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.example.trainingrecordapp.databinding.ActivityMainBinding
@@ -204,12 +205,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkHealthConnectAndSave() {
-        if (!HealthConnectManager.isAvailable(this)) {
+        val sdkStatus = HealthConnectManager.getSdkStatus(this)
+        if (sdkStatus != HealthConnectClient.SDK_AVAILABLE) {
+            val (title, message) =
+                if (sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+                    getString(R.string.health_connect_update_required_title) to
+                        getString(R.string.health_connect_update_required_message)
+                } else {
+                    getString(R.string.health_connect_unavailable_title) to
+                        getString(R.string.health_connect_unavailable_message)
+                }
+
             AlertDialog.Builder(this)
-                .setTitle(getString(R.string.health_connect_unavailable_title))
-                .setMessage(getString(R.string.health_connect_unavailable_message))
+                .setTitle(title)
+                .setMessage(message)
                 .setPositiveButton(getString(R.string.install)) { _, _ ->
-                    HealthConnectManager.openHealthConnectPlayStore(this)
+                    HealthConnectManager.openHealthConnectSettings(this)
                 }
                 .setNegativeButton(getString(R.string.cancel), null)
                 .show()
