@@ -137,20 +137,63 @@ class GeminiApiClient(private val apiKey: String) {
     private fun parseTrainingRecord(responseBody: String): Result<TrainingRecord> {
         return runCatching {
             val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
-            val text = responseJson
-                .getAsJsonArray("candidates")
-                .get(0).asJsonObject
-                .getAsJsonObject("content")
-                .getAsJsonArray("parts")
-                .get(0).asJsonObject
-                .get("text").asString
-
-            val cleanedText = text.trim().removePrefix("```json").removeSuffix("```").trim()
+            val text = extractCandidateText(responseJson)
+                ?: throw IllegalStateException(buildGeminiErrorMessage(responseJson))
+            val cleanedText = extractJsonPayload(text)
             gson.fromJson(cleanedText, TrainingRecord::class.java)
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(Exception("Unexpected response format from Gemini API", it)) }
         )
+    }
+
+    private fun extractCandidateText(responseJson: JsonObject): String? {
+        if (!responseJson.has("candidates")) return null
+        val candidates = responseJson.getAsJsonArray("candidates")
+        for (candidateElement in candidates) {
+            val candidate = candidateElement.asJsonObject
+            if (!candidate.has("content")) continue
+            val content = candidate.getAsJsonObject("content")
+            if (!content.has("parts")) continue
+            val parts = content.getAsJsonArray("parts")
+            for (partElement in parts) {
+                val part = partElement.asJsonObject
+                if (!part.has("text")) continue
+                val text = part.get("text").asString
+                if (text.isNotBlank()) return text
+            }
+        }
+        return null
+    }
+
+    private fun extractJsonPayload(text: String): String {
+        val stripped = text
+            .replace("```json", "", ignoreCase = true)
+            .replace("```", "")
+            .trim()
+        val firstBraceIndex = stripped.indexOf('{')
+        val lastBraceIndex = stripped.lastIndexOf('}')
+        return if (firstBraceIndex >= 0 && lastBraceIndex > firstBraceIndex) {
+            stripped.substring(firstBraceIndex, lastBraceIndex + 1)
+        } else {
+            stripped
+        }
+    }
+
+    private fun buildGeminiErrorMessage(responseJson: JsonObject): String {
+        if (responseJson.has("error")) {
+            val errorObject = responseJson.getAsJsonObject("error")
+            if (errorObject.has("message")) {
+                return "Gemini API error: ${errorObject.get("message").asString}"
+            }
+        }
+        if (responseJson.has("promptFeedback")) {
+            val feedback = responseJson.getAsJsonObject("promptFeedback")
+            if (feedback.has("blockReason")) {
+                return "Gemini response blocked: ${feedback.get("blockReason").asString}"
+            }
+        }
+        return "Gemini response did not contain usable text content"
     }
 
     private fun resolveSupportedModelPath(): String? {
