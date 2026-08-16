@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">トレーニング記録アプリ</string>
+
+    <!-- Buttons -->
+    <string name="capture_image">📷 画像を撮影</string>
+    <string name="analyze">🔍 Gemini AIで解析</string>
+    <string name="save_to_health_connect">💪 ヘルスコネクトへ保存</string>
+    <string name="clear_images">🗑 画像をクリア</string>
+    <string name="change_api_key">APIキーを変更</string>
+    <string name="shutter">📸 撮影</string>
+    <string name="done">✓ 完了</string>
+    <string name="cancel">キャンセル</string>
+    <string name="save">保存</string>
+    <string name="install">インストール</string>
+    <string name="request_permission">権限を許可</string>
+    <string name="open_settings">設定を開く</string>
+
+    <!-- Status -->
+    <string name="image_count">%d枚の画像</string>
+    <string name="image_count_zero">画像なし（カメラで撮影してください）</string>
+    <string name="analyzing">解析中...</string>
+    <string name="captured_count">撮影済み: %d枚</string>
+    <string name="captured_count_zero">撮影済み: 0枚（最大3枚）</string>
+    <string name="photo_captured">写真を撮影しました（%d枚目）</string>
+
+    <!-- API Key dialog -->
+    <string name="api_key_dialog_title">Gemini APIキーの設定</string>
+    <string name="api_key_dialog_message">Gemini APIキーを入力してください。\nAPIキーはデバイスに安全に保存され、画像解析に使用されます。\n\nhttps://aistudio.google.com でAPIキーを取得できます。</string>
+    <string name="api_key_hint">Gemini APIキーを入力</string>
+    <string name="api_key_saved">APIキーを保存しました</string>
+    <string name="api_key_empty">APIキーを入力してください</string>
+    <string name="api_key_required">APIキーは必須です。次回起動時に再度入力してください。</string>
+
+    <!-- Permissions -->
+    <string name="camera_permission_title">カメラ権限が必要です</string>
+    <string name="camera_permission_message">カメラの使用が拒否されました。\n設定からカメラ権限を許可してください。</string>
+    <string name="camera_permission_rationale">トレーニングマシンの結果を撮影するためにカメラへのアクセスが必要です。</string>
+    <string name="health_connect_permission_title">ヘルスコネクト権限が必要です</string>
+    <string name="health_connect_permission_message">ヘルスコネクトへの書き込み権限が取得できませんでした。\n設定から権限を許可してください。</string>
+
+    <!-- Health Connect -->
+    <string name="health_connect_unavailable_title">ヘルスコネクト未インストール</string>
+    <string name="health_connect_unavailable_message">ヘルスコネクトアプリがインストールされていません。\nGoogle Play Storeからインストールしてください。</string>
+    <string name="saved_to_health_connect">ヘルスコネクトに保存しました</string>
+    <string name="save_failed">保存に失敗しました: %s</string>
+
+    <!-- Errors -->
+    <string name="no_images">まず画像を撮影してください</string>
+    <string name="analysis_error">解析エラー: %s</string>
+    <string name="analysis_failed">解析に失敗しました</string>
+    <string name="camera_error">カメラエラー: %s</string>
+    <string name="capture_failed">撮影失敗: %s</string>
+    <string name="max_photos_reached">最大%d枚まで撮影できます</string>
+    <string name="capture_at_least_one">少なくとも1枚撮影してください</string>
+</resources>
