@@ -6,9 +6,7 @@ import android.net.Uri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Metadata
-import androidx.health.connect.client.units.Mass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -18,10 +16,7 @@ object HealthConnectManager {
     private const val HEALTH_CONNECT_PACKAGE_NAME = "com.google.android.apps.healthdata"
 
     val REQUIRED_PERMISSIONS = setOf(
-        HealthPermission.getWritePermission(ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-        HealthPermission.getWritePermission(WeightRecord::class),
-        HealthPermission.getReadPermission(WeightRecord::class)
+        HealthPermission.getWritePermission(ExerciseSessionRecord::class)
     )
 
     fun getSdkStatus(context: Context): Int =
@@ -35,14 +30,26 @@ object HealthConnectManager {
         context.startActivity(intent)
     }
 
-    fun openHealthConnectPermissionSettings(context: Context) {
-        val intent =
-            HealthConnectClient.getHealthConnectManageDataIntent(context, HEALTH_CONNECT_PACKAGE_NAME)
-        runCatching {
-            context.startActivity(intent)
-        }.onFailure {
-            openHealthConnectSettings(context)
+    fun openHealthConnectPermissionSettings(context: Context): Boolean {
+        val intents = listOf<Intent>(
+            HealthConnectClient.Companion.getHealthConnectManageDataIntent(context, HEALTH_CONNECT_PACKAGE_NAME),
+            Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS").apply {
+                putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
+            },
+            Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").apply {
+                putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
+            }
+        )
+
+        intents.forEach { intent ->
+            if (runCatching {
+                    context.startActivity(intent)
+                }.isSuccess
+            ) {
+                return true
+            }
         }
+        return false
     }
 
     suspend fun getGrantedPermissions(context: Context): Set<String> =

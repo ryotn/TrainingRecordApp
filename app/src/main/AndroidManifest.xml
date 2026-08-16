@@ -6,10 +6,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="true" />
 
     <!-- Health Connect permissions -->
-    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
-    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
-    <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />
 
     <!-- Internet for Gemini API -->
     <uses-permission android:name="android.permission.INTERNET" />

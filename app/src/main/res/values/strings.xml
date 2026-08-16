@@ -17,6 +17,7 @@
     <string name="request_permission">権限を許可</string>
     <string name="open_settings">設定を開く</string>
     <string name="health_connect_open_settings">ヘルスコネクト設定を開く</string>
+    <string name="health_connect_settings_open_failed">ヘルスコネクト設定を開けませんでした</string>
 
     <!-- Status -->
     <string name="image_count">%d枚の画像</string>

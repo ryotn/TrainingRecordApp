@@ -298,7 +298,9 @@ class MainActivity : AppCompatActivity() {
                     healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
                 }
                 .setNegativeButton(getString(R.string.health_connect_open_settings)) { _, _ ->
-                    HealthConnectManager.openHealthConnectPermissionSettings(this)
+                    if (!HealthConnectManager.openHealthConnectPermissionSettings(this)) {
+                        Toast.makeText(this, getString(R.string.health_connect_settings_open_failed), Toast.LENGTH_LONG).show()
+                    }
                 }
                 .setNeutralButton(getString(R.string.cancel), null)
         )
