@@ -90,8 +90,7 @@ class GeminiApiClient(private val apiKey: String) {
                 }
                     .distinct()
 
-                var notFoundCount = 0
-                var lastNotFoundError: Exception? = null
+                var lastError: Exception? = null
 
                 for (modelPath in modelCandidates) {
                     val request = Request.Builder()
@@ -107,43 +106,40 @@ class GeminiApiClient(private val apiKey: String) {
                             return@withContext parseTrainingRecord(responseBody)
                         }
 
+                        lastError = Exception("API error ${response.code} ($modelPath): $responseBody")
                         if (response.code == 404) {
-                            notFoundCount += 1
-                            lastNotFoundError = Exception("API error 404 ($modelPath): $responseBody")
                             return@use
                         }
 
-                        return@withContext Result.failure(
-                            Exception("API error ${response.code} ($modelPath): $responseBody")
-                        )
+                        return@withContext Result.failure(lastError!!)
                     }
                 }
 
-                if (notFoundCount == modelCandidates.size) {
-                    return@withContext Result.failure(
-                        lastNotFoundError ?: Exception("No compatible Gemini model found for generateContent")
-                    )
-                }
-
-                return@withContext Result.failure(Exception("Failed to generate content"))
+                return@withContext Result.failure(
+                    lastError ?: Exception("No compatible Gemini model found for generateContent")
+                )
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
 
     private fun parseTrainingRecord(responseBody: String): Result<TrainingRecord> {
-        val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
-        val text = responseJson
-            .getAsJsonArray("candidates")
-            .get(0).asJsonObject
-            .getAsJsonObject("content")
-            .getAsJsonArray("parts")
-            .get(0).asJsonObject
-            .get("text").asString
+        return runCatching {
+            val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
+            val text = responseJson
+                .getAsJsonArray("candidates")
+                .get(0).asJsonObject
+                .getAsJsonObject("content")
+                .getAsJsonArray("parts")
+                .get(0).asJsonObject
+                .get("text").asString
 
-        val cleanedText = text.trim().removePrefix("```json").removeSuffix("```").trim()
-        val record = gson.fromJson(cleanedText, TrainingRecord::class.java)
-        return Result.success(record)
+            val cleanedText = text.trim().removePrefix("```json").removeSuffix("```").trim()
+            gson.fromJson(cleanedText, TrainingRecord::class.java)
+        }.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { Result.failure(Exception("Unexpected response format from Gemini API", it)) }
+        )
     }
 
     private fun resolveSupportedModelPath(): String? {
