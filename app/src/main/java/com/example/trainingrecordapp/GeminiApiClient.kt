@@ -27,15 +27,15 @@ data class ExerciseSet(
 
 class GeminiApiClient(private val apiKey: String) {
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
-        .callTimeout(30, TimeUnit.SECONDS)
-        .build()
     private val gson = Gson()
 
     companion object {
+        private val client: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(30, TimeUnit.SECONDS)
+            .build()
         @Volatile
         private var cachedModelCandidates: List<String> = emptyList()
         private val modelCacheLock = Any()
