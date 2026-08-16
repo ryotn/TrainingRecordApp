@@ -36,6 +36,7 @@ class GeminiApiClient(private val apiKey: String) {
     private val gson = Gson()
     @Volatile
     private var cachedModelCandidates: List<String> = emptyList()
+    private val modelCacheLock = Any()
 
     private val systemPrompt = """
         あなたはトレーニングマシンの結果画面の画像を解析するアシスタントです。
@@ -87,6 +88,11 @@ class GeminiApiClient(private val apiKey: String) {
                 }
 
                 val modelCandidates = resolveSupportedModelPaths()
+                if (modelCandidates.isEmpty()) {
+                    return@withContext Result.failure(
+                        Exception("Geminiの利用可能モデル一覧を取得できませんでした。ネットワーク状態を確認して再試行してください。")
+                    )
+                }
 
                 var lastError: Exception? = null
 
@@ -194,8 +200,22 @@ class GeminiApiClient(private val apiKey: String) {
     }
 
     private fun resolveSupportedModelPaths(): List<String> {
-        if (cachedModelCandidates.isNotEmpty()) return cachedModelCandidates
+        val cached = cachedModelCandidates
+        if (cached.isNotEmpty()) return cached
+        synchronized(modelCacheLock) {
+            if (cachedModelCandidates.isNotEmpty()) return cachedModelCandidates
+        }
+        val discovered = fetchSupportedModelPaths()
+        if (discovered.isEmpty()) return emptyList()
+        synchronized(modelCacheLock) {
+            if (cachedModelCandidates.isEmpty()) {
+                cachedModelCandidates = discovered
+            }
+            return cachedModelCandidates
+        }
+    }
 
+    private fun fetchSupportedModelPaths(): List<String> {
         val request = Request.Builder()
             .url("https://generativelanguage.googleapis.com/v1beta/models")
             .header("x-goog-api-key", apiKey)
@@ -204,10 +224,10 @@ class GeminiApiClient(private val apiKey: String) {
 
         return try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return cachedModelCandidates
-                val responseBody = response.body?.string() ?: return cachedModelCandidates
+                if (!response.isSuccessful) return emptyList()
+                val responseBody = response.body?.string() ?: return emptyList()
                 val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
-                if (!responseJson.has("models")) return cachedModelCandidates
+                if (!responseJson.has("models")) return emptyList()
 
                 val supportedModels = responseJson.getAsJsonArray("models")
                     .mapNotNull { modelElement ->
@@ -235,13 +255,10 @@ class GeminiApiClient(private val apiKey: String) {
                     )
                     .map { it.name }
 
-                if (supportedModels.isNotEmpty()) {
-                    cachedModelCandidates = supportedModels
-                }
                 supportedModels
             }
         } catch (_: Exception) {
-            cachedModelCandidates
+            emptyList()
         }
     }
 
