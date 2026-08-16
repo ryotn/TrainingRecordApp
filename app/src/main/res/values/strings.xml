@@ -13,6 +13,7 @@
     <string name="cancel">キャンセル</string>
     <string name="save">保存</string>
     <string name="install">インストール</string>
+    <string name="update">更新</string>
     <string name="request_permission">権限を許可</string>
     <string name="open_settings">設定を開く</string>
 

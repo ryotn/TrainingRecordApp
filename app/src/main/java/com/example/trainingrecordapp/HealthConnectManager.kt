@@ -7,6 +7,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.Mass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,6 +58,7 @@ object HealthConnectManager {
                     startZoneOffset = zoneId.rules.getOffset(startTime),
                     endTime = now,
                     endZoneOffset = zoneId.rules.getOffset(now),
+                    metadata = Metadata.manualEntry(),
                     exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
                     title = record.exerciseName,
                     notes = buildNotes(record)

@@ -207,19 +207,25 @@ class MainActivity : AppCompatActivity() {
     private fun checkHealthConnectAndSave() {
         val sdkStatus = HealthConnectManager.getSdkStatus(this)
         if (sdkStatus != HealthConnectClient.SDK_AVAILABLE) {
-            val (title, message) =
+            val (title, message, actionText) =
                 if (sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-                    getString(R.string.health_connect_update_required_title) to
-                        getString(R.string.health_connect_update_required_message)
+                    Triple(
+                        getString(R.string.health_connect_update_required_title),
+                        getString(R.string.health_connect_update_required_message),
+                        getString(R.string.update)
+                    )
                 } else {
-                    getString(R.string.health_connect_unavailable_title) to
-                        getString(R.string.health_connect_unavailable_message)
+                    Triple(
+                        getString(R.string.health_connect_unavailable_title),
+                        getString(R.string.health_connect_unavailable_message),
+                        getString(R.string.install)
+                    )
                 }
 
             AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton(getString(R.string.install)) { _, _ ->
+                .setPositiveButton(actionText) { _, _ ->
                     HealthConnectManager.openHealthConnectSettings(this)
                 }
                 .setNegativeButton(getString(R.string.cancel), null)
