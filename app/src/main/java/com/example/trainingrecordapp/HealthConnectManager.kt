@@ -14,6 +14,7 @@ import java.time.ZoneId
 
 object HealthConnectManager {
     private const val HEALTH_CONNECT_PACKAGE_NAME = "com.google.android.apps.healthdata"
+    private const val DEFAULT_SESSION_DURATION_MINUTES = 60L
 
     val REQUIRED_PERMISSIONS = setOf(
         HealthPermission.getWritePermission(ExerciseSessionRecord::class)
@@ -68,7 +69,12 @@ object HealthConnectManager {
                 val client = HealthConnectClient.getOrCreate(context)
                 val now = Instant.now()
                 val zoneId = ZoneId.systemDefault()
-                val startTime = now.minusSeconds(3600)
+                val durationMinutes = if (record.trainingDurationMinutes > 0) {
+                    record.trainingDurationMinutes.toLong()
+                } else {
+                    DEFAULT_SESSION_DURATION_MINUTES
+                }
+                val startTime = now.minusSeconds(durationMinutes * 60L)
 
                 val exerciseSession = ExerciseSessionRecord(
                     startTime = startTime,
@@ -90,7 +96,24 @@ object HealthConnectManager {
 
     private fun buildNotes(record: TrainingRecord): String {
         val sb = StringBuilder()
-        sb.appendLine("エクササイズ: ${record.exerciseName}")
+        if (record.exerciseName.isNotBlank()) {
+            sb.appendLine("エクササイズ: ${record.exerciseName}")
+        }
+        if (record.machineName.isNotBlank()) {
+            sb.appendLine("マシン: ${record.machineName}")
+        }
+        if (record.trainingDurationMinutes > 0) {
+            sb.appendLine("トレーニング時間: ${record.trainingDurationMinutes}分")
+        }
+        if (record.totalReps > 0) {
+            sb.appendLine("総レップ数: ${record.totalReps}回")
+        }
+        if (record.totalVolumeKg > 0.0) {
+            sb.appendLine("総重量: ${record.totalVolumeKg}kg")
+        }
+        if (record.caloriesKcal > 0.0) {
+            sb.appendLine("消費カロリー: ${record.caloriesKcal}kcal")
+        }
         record.sets.forEach { set ->
             sb.appendLine("セット ${set.setNumber}: ${set.reps}回 x ${set.weightKg}kg")
         }

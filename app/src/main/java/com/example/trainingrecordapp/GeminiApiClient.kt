@@ -14,15 +14,20 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
 data class TrainingRecord(
-    val exerciseName: String,
-    val sets: List<ExerciseSet>,
-    val notes: String
+    val exerciseName: String = "",
+    val machineName: String = "",
+    val trainingDurationMinutes: Int = 0,
+    val totalReps: Int = 0,
+    val totalVolumeKg: Double = 0.0,
+    val caloriesKcal: Double = 0.0,
+    val sets: List<ExerciseSet> = emptyList(),
+    val notes: String = ""
 )
 
 data class ExerciseSet(
-    val setNumber: Int,
-    val reps: Int,
-    val weightKg: Double
+    val setNumber: Int = 0,
+    val reps: Int = 0,
+    val weightKg: Double = 0.0
 )
 
 class GeminiApiClient(private val apiKey: String) {
@@ -48,13 +53,20 @@ class GeminiApiClient(private val apiKey: String) {
         必ず以下の形式のJSONのみを返してください（コードブロックなし）:
         {
           "exerciseName": "エクササイズ名",
+          "machineName": "マシン名",
+          "trainingDurationMinutes": 20,
+          "totalReps": 120,
+          "totalVolumeKg": 2400.0,
+          "caloriesKcal": 180.5,
           "sets": [
             {"setNumber": 1, "reps": 10, "weightKg": 50.0}
           ],
           "notes": "備考"
         }
-        
-        情報が読み取れない場合は適切なデフォルト値を使用してください。
+
+        画像にある数値・情報は可能な限り漏れなく反映してください。
+        trainingDurationMinutes は「分」で返してください。
+        情報が読み取れない項目は、文字列は空文字、数値は0、配列は空配列を使用してください。
     """.trimIndent()
 
     suspend fun parseTrainingImages(bitmaps: List<Bitmap>): Result<TrainingRecord> =
