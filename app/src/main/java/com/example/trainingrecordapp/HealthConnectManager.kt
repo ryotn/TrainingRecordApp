@@ -23,7 +23,7 @@ object HealthConnectManager {
     )
 
     fun isAvailable(context: Context): Boolean {
-        return HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+        return HealthConnectClient.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
 
     fun openHealthConnectPlayStore(context: Context) {

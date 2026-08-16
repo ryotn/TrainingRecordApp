@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.example.trainingrecordapp.databinding.ActivityMainBinding
 import com.google.gson.GsonBuilder
@@ -41,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     // Health Connect permissions launcher
     private val healthPermissionLauncher = registerForActivityResult(
-        androidx.health.connect.client.permission.HealthPermission.createRequestPermissionResultContract()
+        PermissionController.createRequestPermissionResultContract()
     ) { granted ->
         if (granted.containsAll(HealthConnectManager.REQUIRED_PERMISSIONS)) {
             lifecycleScope.launch { saveToHealthConnect() }

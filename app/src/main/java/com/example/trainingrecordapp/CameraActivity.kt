@@ -20,6 +20,7 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
     private var imageCapture: ImageCapture? = null
     private val capturedFiles = mutableListOf<File>()
+    private var completedWithSuccess = false
 
     companion object {
         const val EXTRA_IMAGE_URIS = "image_uris"
@@ -43,6 +44,7 @@ class CameraActivity : AppCompatActivity() {
                 val resultIntent = Intent().apply {
                     putStringArrayListExtra(EXTRA_IMAGE_URIS, uris)
                 }
+                completedWithSuccess = true
                 setResult(RESULT_OK, resultIntent)
                 finish()
             } else {
@@ -59,7 +61,7 @@ class CameraActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isFinishing && resultCode != RESULT_OK) {
+        if (isFinishing && !completedWithSuccess) {
             deleteTempFiles()
         }
     }
@@ -70,7 +72,7 @@ class CameraActivity : AppCompatActivity() {
             val cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder().build().also {
-                it.surfaceProvider = binding.viewFinder.surfaceProvider
+                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
             }
 
             imageCapture = ImageCapture.Builder()
