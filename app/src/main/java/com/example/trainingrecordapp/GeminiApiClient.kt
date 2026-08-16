@@ -28,6 +28,12 @@ class GeminiApiClient(private val apiKey: String) {
 
     private val client = OkHttpClient()
     private val gson = Gson()
+    private val preferredModelNames = listOf(
+        "models/gemini-2.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-1.5-flash"
+    )
 
     private val systemPrompt = """
         あなたはトレーニングマシンの結果画面の画像を解析するアシスタントです。
@@ -78,8 +84,9 @@ class GeminiApiClient(private val apiKey: String) {
                     add("contents", gson.toJsonTree(listOf(content)))
                 }
 
+                val modelPath = resolveSupportedModelPath() ?: "models/gemini-2.0-flash"
                 val request = Request.Builder()
-                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey")
+                    .url("https://generativelanguage.googleapis.com/v1beta/$modelPath:generateContent?key=$apiKey")
                     .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 
@@ -89,7 +96,9 @@ class GeminiApiClient(private val apiKey: String) {
                 )
 
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("API error ${response.code}: $responseBody"))
+                    return@withContext Result.failure(
+                        Exception("API error ${response.code} ($modelPath): $responseBody")
+                    )
                 }
 
                 val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
@@ -108,6 +117,42 @@ class GeminiApiClient(private val apiKey: String) {
                 Result.failure(e)
             }
         }
+
+    private fun resolveSupportedModelPath(): String? {
+        val request = Request.Builder()
+            .url("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
+            .get()
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val responseBody = response.body?.string() ?: return null
+                val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
+                if (!responseJson.has("models")) return null
+
+                val supportedModels = responseJson.getAsJsonArray("models")
+                    .mapNotNull { modelElement ->
+                        val model = modelElement.asJsonObject
+                        val methods = if (model.has("supportedGenerationMethods")) {
+                            model.getAsJsonArray("supportedGenerationMethods")
+                        } else {
+                            null
+                        } ?: return@mapNotNull null
+
+                        val supportsGenerateContent = methods.any { it.asString == "generateContent" }
+                        if (!supportsGenerateContent || !model.has("name")) return@mapNotNull null
+                        model.get("name").asString
+                    }
+
+                preferredModelNames.firstOrNull { it in supportedModels }
+                    ?: supportedModels.firstOrNull { it.contains("flash") }
+                    ?: supportedModels.firstOrNull()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = ByteArrayOutputStream()
