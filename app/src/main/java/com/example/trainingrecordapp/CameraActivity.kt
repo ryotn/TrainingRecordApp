@@ -24,7 +24,7 @@ class CameraActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_IMAGE_URIS = "image_uris"
-        const val MAX_PHOTOS = 3
+        const val MAX_PHOTOS = 5
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -86,11 +86,11 @@ class GeminiApiClient(private val apiKey: String) {
                 for (bitmap in bitmaps) {
                     val base64 = bitmapToBase64(bitmap)
                     val inlineData = JsonObject().apply {
-                        addProperty("mime_type", "image/jpeg")
+                        addProperty("mimeType", "image/jpeg")
                         addProperty("data", base64)
                     }
                     val imagePart = JsonObject().apply {
-                        add("inline_data", inlineData)
+                        add("inlineData", inlineData)
                     }
                     parts.add(imagePart)
                 }

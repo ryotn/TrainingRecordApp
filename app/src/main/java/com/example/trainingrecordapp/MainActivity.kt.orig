@@ -98,9 +98,8 @@ class MainActivity : AppCompatActivity() {
             }
             urisToProcess.mapNotNull { uri ->
                 try {
-                    contentResolver.openInputStream(uri)?.use { inputStream ->
-                        BitmapFactory.decodeStream(inputStream)
-                    }
+                    val inputStream = contentResolver.openInputStream(uri)
+                    BitmapFactory.decodeStream(inputStream)
                 } catch (e: Exception) {
                     null
                 }
