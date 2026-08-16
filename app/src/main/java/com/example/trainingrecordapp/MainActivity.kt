@@ -239,7 +239,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCapturedImages() {
-        binding.tvImageCount.text = getString(R.string.image_count, capturedBitmaps.size)
+        binding.tvImageCount.text = if (capturedBitmaps.isEmpty()) {
+            getString(R.string.image_count_zero)
+        } else {
+            getString(R.string.image_count, capturedBitmaps.size)
+        }
         binding.btnAnalyze.isEnabled = capturedBitmaps.isNotEmpty()
         binding.btnClearImages.isEnabled = capturedBitmaps.isNotEmpty()
 
