@@ -123,7 +123,12 @@ class GeminiApiClient(private val apiKey: String) {
 
                         val statusCode = response.code
                         lastError = Exception("API error $statusCode ($modelPath)")
-                        if (statusCode == 404 || statusCode == 429 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504) {
+                        if (statusCode == 429) {
+                            return@withContext Result.failure(
+                                Exception("Gemini API rate limit exceeded. Please try again later.")
+                            )
+                        }
+                        if (statusCode == 404 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504) {
                             if (cachedModelPath == modelPath) {
                                 cachedModelPath = null
                             }
