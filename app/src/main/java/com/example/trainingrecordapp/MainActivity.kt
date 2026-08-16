@@ -19,6 +19,7 @@ import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.example.trainingrecordapp.databinding.ActivityMainBinding
 import com.google.gson.GsonBuilder
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -48,10 +49,7 @@ class MainActivity : AppCompatActivity() {
         if (granted.containsAll(HealthConnectManager.REQUIRED_PERMISSIONS)) {
             lifecycleScope.launch { saveToHealthConnect() }
         } else {
-            showPermissionDeniedDialog(
-                getString(R.string.health_connect_permission_title),
-                getString(R.string.health_connect_permission_message)
-            )
+            showHealthConnectPermissionDeniedDialog()
         }
     }
 
@@ -101,7 +99,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(48, 24, 48, 24)
         }
 
-        AlertDialog.Builder(this)
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.api_key_dialog_title))
             .setMessage(getString(R.string.api_key_dialog_message))
             .setView(editText)
@@ -119,7 +118,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(getString(R.string.cancel)) { _, _ ->
                 Toast.makeText(this, getString(R.string.api_key_required), Toast.LENGTH_LONG).show()
             }
-            .show()
+        )
     }
 
     private fun setupButtons() {
@@ -157,14 +156,15 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
                     PackageManager.PERMISSION_GRANTED -> openCamera()
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                AlertDialog.Builder(this)
+                showStyledDialog(
+                    MaterialAlertDialogBuilder(this)
                     .setTitle(getString(R.string.camera_permission_title))
                     .setMessage(getString(R.string.camera_permission_rationale))
                     .setPositiveButton(getString(R.string.request_permission)) { _, _ ->
                         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
                     .setNegativeButton(getString(R.string.cancel), null)
-                    .show()
+                )
             }
             else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
@@ -222,14 +222,15 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-            AlertDialog.Builder(this)
+            showStyledDialog(
+                MaterialAlertDialogBuilder(this)
                 .setTitle(title)
                 .setMessage(message)
                 .setPositiveButton(actionText) { _, _ ->
                     HealthConnectManager.openHealthConnectSettings(this)
                 }
                 .setNegativeButton(getString(R.string.cancel), null)
-                .show()
+            )
             return
         }
 
@@ -274,7 +275,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPermissionDeniedDialog(title: String, message: String) {
-        AlertDialog.Builder(this)
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(getString(R.string.open_settings)) { _, _ ->
@@ -284,6 +286,32 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
             .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        )
+    }
+
+    private fun showHealthConnectPermissionDeniedDialog() {
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.health_connect_permission_title))
+                .setMessage(getString(R.string.health_connect_permission_message))
+                .setPositiveButton(getString(R.string.request_permission)) { _, _ ->
+                    healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                }
+                .setNegativeButton(getString(R.string.health_connect_open_settings)) { _, _ ->
+                    HealthConnectManager.openHealthConnectPermissionSettings(this)
+                }
+                .setNeutralButton(getString(R.string.cancel), null)
+        )
+    }
+
+    private fun showStyledDialog(builder: MaterialAlertDialogBuilder) {
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            val actionColor = ContextCompat.getColor(this, R.color.action_button_bg)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(actionColor)
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(actionColor)
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setTextColor(actionColor)
+        }
+        dialog.show()
     }
 }

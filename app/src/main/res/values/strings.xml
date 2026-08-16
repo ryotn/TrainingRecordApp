@@ -16,6 +16,7 @@
     <string name="update">更新</string>
     <string name="request_permission">権限を許可</string>
     <string name="open_settings">設定を開く</string>
+    <string name="health_connect_open_settings">ヘルスコネクト設定を開く</string>
 
     <!-- Status -->
     <string name="image_count">%d枚の画像</string>
@@ -39,7 +40,7 @@
     <string name="camera_permission_message">カメラの使用が拒否されました。\n設定からカメラ権限を許可してください。</string>
     <string name="camera_permission_rationale">トレーニングマシンの結果を撮影するためにカメラへのアクセスが必要です。</string>
     <string name="health_connect_permission_title">ヘルスコネクト権限が必要です</string>
-    <string name="health_connect_permission_message">ヘルスコネクトへの書き込み権限が取得できませんでした。\n設定から権限を許可してください。</string>
+    <string name="health_connect_permission_message">ヘルスコネクト権限が取得できませんでした。\n「権限を許可」または「ヘルスコネクト設定を開く」から許可してください。</string>
 
     <!-- Health Connect -->
     <string name="health_connect_unavailable_title">ヘルスコネクト未インストール</string>

@@ -35,6 +35,16 @@ object HealthConnectManager {
         context.startActivity(intent)
     }
 
+    fun openHealthConnectPermissionSettings(context: Context) {
+        val intent =
+            HealthConnectClient.getHealthConnectManageDataIntent(context, HEALTH_CONNECT_PACKAGE_NAME)
+        runCatching {
+            context.startActivity(intent)
+        }.onFailure {
+            openHealthConnectSettings(context)
+        }
+    }
+
     suspend fun getGrantedPermissions(context: Context): Set<String> =
         withContext(Dispatchers.IO) {
             HealthConnectClient.getOrCreate(context).permissionController.getGrantedPermissions()
