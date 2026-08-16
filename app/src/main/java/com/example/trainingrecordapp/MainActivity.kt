@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val capturedBitmaps = mutableListOf<Bitmap>()
+    private var pendingSaveAfterPermissionRequest = false
 
     // Camera permission launcher
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -46,8 +47,12 @@ class MainActivity : AppCompatActivity() {
     private val healthPermissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { granted ->
+        val shouldSave = pendingSaveAfterPermissionRequest
+        pendingSaveAfterPermissionRequest = false
         if (granted.containsAll(HealthConnectManager.REQUIRED_PERMISSIONS)) {
-            lifecycleScope.launch { saveToHealthConnect() }
+            if (shouldSave) {
+                lifecycleScope.launch { saveToHealthConnect() }
+            }
         } else {
             showHealthConnectPermissionDeniedDialog()
         }
@@ -84,6 +89,7 @@ class MainActivity : AppCompatActivity() {
 
         checkAndRequestApiKey()
         setupButtons()
+        checkHealthConnectPermissionOnStartup()
     }
 
     private fun checkAndRequestApiKey() {
@@ -238,6 +244,18 @@ class MainActivity : AppCompatActivity() {
             if (HealthConnectManager.hasAllPermissions(this@MainActivity)) {
                 saveToHealthConnect()
             } else {
+                pendingSaveAfterPermissionRequest = true
+                healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+            }
+        }
+    }
+
+    private fun checkHealthConnectPermissionOnStartup() {
+        if (HealthConnectManager.getSdkStatus(this) != HealthConnectClient.SDK_AVAILABLE) return
+
+        lifecycleScope.launch {
+            if (!HealthConnectManager.hasAllPermissions(this@MainActivity)) {
+                pendingSaveAfterPermissionRequest = false
                 healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
             }
         }
