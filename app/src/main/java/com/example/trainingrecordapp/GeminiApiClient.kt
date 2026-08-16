@@ -3,6 +3,8 @@ package com.example.trainingrecordapp
 import android.graphics.Bitmap
 import android.util.Base64
 import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -100,6 +102,9 @@ class GeminiApiClient(private val apiKey: String) {
 
                 val requestBody = JsonObject().apply {
                     add("contents", gson.toJsonTree(listOf(content)))
+                    add("generationConfig", JsonObject().apply {
+                        addProperty("responseMimeType", "application/json")
+                    })
                 }
 
                 val modelCandidates = resolveSupportedModelPaths()
@@ -158,8 +163,9 @@ class GeminiApiClient(private val apiKey: String) {
             val text = extractCandidateText(responseJson)
                 ?: throw IllegalStateException(buildGeminiErrorMessage(responseJson))
             val cleanedText = extractJsonPayload(text)
-            val parsed = gson.fromJson(cleanedText, TrainingRecord::class.java)
-                ?: throw IllegalStateException("Gemini JSON could not be parsed into TrainingRecord")
+            val recordJson = gson.fromJson(cleanedText, JsonObject::class.java)
+                ?: throw IllegalStateException("Gemini JSON could not be parsed into object")
+            val parsed = parseTrainingRecordObject(recordJson)
             validateTrainingRecord(parsed)
             parsed
         }.fold(
@@ -199,6 +205,36 @@ class GeminiApiClient(private val apiKey: String) {
 
         if (!hasSetData && !hasSummaryData && !hasTextData) {
             throw IllegalStateException("Gemini returned empty training record")
+        }
+    }
+
+    private fun parseTrainingRecordObject(recordJson: JsonObject): TrainingRecord {
+        val sets = recordJson.get("sets")
+            ?.let { parseSets(it) }
+            ?: emptyList()
+
+        return TrainingRecord(
+            exerciseName = recordJson.getAsCoercedString("exerciseName"),
+            machineName = recordJson.getAsCoercedString("machineName"),
+            trainingDurationMinutes = recordJson.getAsCoercedInt("trainingDurationMinutes"),
+            totalReps = recordJson.getAsCoercedInt("totalReps"),
+            totalVolumeKg = recordJson.getAsCoercedDouble("totalVolumeKg"),
+            caloriesKcal = recordJson.getAsCoercedDouble("caloriesKcal"),
+            sets = sets,
+            notes = recordJson.getAsCoercedString("notes")
+        )
+    }
+
+    private fun parseSets(setsElement: JsonElement): List<ExerciseSet> {
+        if (!setsElement.isJsonArray) return emptyList()
+        return setsElement.asJsonArray.mapNotNull { setElement ->
+            if (!setElement.isJsonObject) return@mapNotNull null
+            val setObject = setElement.asJsonObject
+            ExerciseSet(
+                setNumber = setObject.getAsCoercedInt("setNumber"),
+                reps = setObject.getAsCoercedInt("reps"),
+                weightKg = setObject.getAsCoercedDouble("weightKg")
+            )
         }
     }
 
@@ -301,6 +337,36 @@ class GeminiApiClient(private val apiKey: String) {
     private fun JsonObject.getAsLongOrZero(memberName: String): Long {
         if (!has(memberName)) return 0L
         return runCatching { get(memberName).asLong }.getOrDefault(0L)
+    }
+
+    private fun JsonObject.getAsCoercedString(memberName: String): String {
+        if (!has(memberName)) return ""
+        val value = get(memberName)
+        if (value == null || value is JsonNull) return ""
+        return runCatching {
+            when {
+                value.isJsonPrimitive -> value.asJsonPrimitive.asString.trim()
+                else -> value.toString()
+            }
+        }.getOrDefault("")
+    }
+
+    private fun JsonObject.getAsCoercedInt(memberName: String): Int =
+        getAsCoercedDouble(memberName).toInt()
+
+    private fun JsonObject.getAsCoercedDouble(memberName: String): Double {
+        if (!has(memberName)) return 0.0
+        val value = get(memberName)
+        if (value == null || value is JsonNull) return 0.0
+        if (!value.isJsonPrimitive) return 0.0
+        val primitive = value.asJsonPrimitive
+        if (primitive.isNumber) {
+            return runCatching { primitive.asDouble }.getOrDefault(0.0)
+        }
+        val normalized = primitive.asString
+            .replace(",", "")
+            .replace(Regex("[^0-9.\\-]"), "")
+        return normalized.toDoubleOrNull() ?: 0.0
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
