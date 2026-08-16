@@ -86,12 +86,11 @@ class GeminiApiClient(private val apiKey: String) {
                     add("contents", gson.toJsonTree(listOf(content)))
                 }
 
+                val resolvedModelPath = cachedModelPath ?: resolveSupportedModelPath()?.also {
+                    cachedModelPath = it
+                }
                 val modelCandidates = buildList {
-                    cachedModelPath?.let(::add)
-                    resolveSupportedModelPath()?.let {
-                        cachedModelPath = it
-                        add(it)
-                    }
+                    resolvedModelPath?.let(::add)
                     addAll(preferredModelNames)
                 }
                     .distinct()
@@ -120,7 +119,10 @@ class GeminiApiClient(private val apiKey: String) {
                             return@use
                         }
 
-                        return@withContext Result.failure(lastError!!)
+                        val isTransientError = response.code == 429 || response.code in 500..599
+                        if (!isTransientError) {
+                            return@withContext Result.failure(lastError!!)
+                        }
                     }
                 }
 
