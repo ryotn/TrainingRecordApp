@@ -41,10 +41,10 @@ class GeminiApiClient(private val apiKey: String) {
             .writeTimeout(20, TimeUnit.SECONDS)
             .callTimeout(30, TimeUnit.SECONDS)
             .build()
-        @Volatile
-        private var cachedModelCandidates: List<String> = emptyList()
-        private val modelCacheLock = Any()
     }
+    @Volatile
+    private var cachedModelCandidates: List<String> = emptyList()
+    private val modelCacheLock = Any()
 
     private val systemPrompt = """
         あなたはトレーニングマシンの結果画面の画像を解析するアシスタントです。
@@ -158,7 +158,10 @@ class GeminiApiClient(private val apiKey: String) {
             val text = extractCandidateText(responseJson)
                 ?: throw IllegalStateException(buildGeminiErrorMessage(responseJson))
             val cleanedText = extractJsonPayload(text)
-            gson.fromJson(cleanedText, TrainingRecord::class.java)
+            val parsed = gson.fromJson(cleanedText, TrainingRecord::class.java)
+                ?: throw IllegalStateException("Gemini JSON could not be parsed into TrainingRecord")
+            validateTrainingRecord(parsed)
+            parsed
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(Exception("Unexpected response format from Gemini API", it)) }
@@ -182,6 +185,21 @@ class GeminiApiClient(private val apiKey: String) {
             }
         }
         return null
+    }
+
+    private fun validateTrainingRecord(record: TrainingRecord) {
+        val hasSetData = record.sets.any { it.reps > 0 || it.weightKg > 0.0 }
+        val hasSummaryData = record.trainingDurationMinutes > 0 ||
+            record.totalReps > 0 ||
+            record.totalVolumeKg > 0.0 ||
+            record.caloriesKcal > 0.0
+        val hasTextData = record.exerciseName.isNotBlank() ||
+            record.machineName.isNotBlank() ||
+            record.notes.isNotBlank()
+
+        if (!hasSetData && !hasSummaryData && !hasTextData) {
+            throw IllegalStateException("Gemini returned empty training record")
+        }
     }
 
     private fun extractJsonPayload(text: String): String {
