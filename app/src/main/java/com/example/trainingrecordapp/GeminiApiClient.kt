@@ -35,13 +35,7 @@ class GeminiApiClient(private val apiKey: String) {
         .build()
     private val gson = Gson()
     @Volatile
-    private var cachedModelPath: String? = null
-    private val preferredModelNames = listOf(
-        "models/gemini-2.5-flash",
-        "models/gemini-2.0-flash",
-        "models/gemini-1.5-flash-latest",
-        "models/gemini-1.5-flash"
-    )
+    private var cachedModelCandidates: List<String> = emptyList()
 
     private val systemPrompt = """
         あなたはトレーニングマシンの結果画面の画像を解析するアシスタントです。
@@ -92,14 +86,7 @@ class GeminiApiClient(private val apiKey: String) {
                     add("contents", gson.toJsonTree(listOf(content)))
                 }
 
-                val resolvedModelPath = cachedModelPath ?: resolveSupportedModelPath()?.also {
-                    cachedModelPath = it
-                }
-                val modelCandidates = buildList {
-                    resolvedModelPath?.let(::add)
-                    addAll(preferredModelNames)
-                }
-                    .distinct()
+                val modelCandidates = resolveSupportedModelPaths()
 
                 var lastError: Exception? = null
 
@@ -129,9 +116,6 @@ class GeminiApiClient(private val apiKey: String) {
                             )
                         }
                         if (statusCode == 404 || statusCode == 502 || statusCode == 503 || statusCode == 504) {
-                            if (cachedModelPath == modelPath) {
-                                cachedModelPath = null
-                            }
                             return@use
                         }
 
@@ -140,7 +124,7 @@ class GeminiApiClient(private val apiKey: String) {
                 }
 
                 return@withContext Result.failure(
-                    lastError ?: Exception("No compatible Gemini model found for generateContent")
+                    lastError ?: Exception("No available Gemini model supporting generateContent")
                 )
             } catch (e: Exception) {
                 Result.failure(e)
@@ -209,7 +193,9 @@ class GeminiApiClient(private val apiKey: String) {
         return "Gemini response did not contain usable text content"
     }
 
-    private fun resolveSupportedModelPath(): String? {
+    private fun resolveSupportedModelPaths(): List<String> {
+        if (cachedModelCandidates.isNotEmpty()) return cachedModelCandidates
+
         val request = Request.Builder()
             .url("https://generativelanguage.googleapis.com/v1beta/models")
             .header("x-goog-api-key", apiKey)
@@ -218,10 +204,10 @@ class GeminiApiClient(private val apiKey: String) {
 
         return try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
-                val responseBody = response.body?.string() ?: return null
+                if (!response.isSuccessful) return cachedModelCandidates
+                val responseBody = response.body?.string() ?: return cachedModelCandidates
                 val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
-                if (!responseJson.has("models")) return null
+                if (!responseJson.has("models")) return cachedModelCandidates
 
                 val supportedModels = responseJson.getAsJsonArray("models")
                     .mapNotNull { modelElement ->
@@ -234,16 +220,40 @@ class GeminiApiClient(private val apiKey: String) {
 
                         val supportsGenerateContent = methods.any { it.asString == "generateContent" }
                         if (!supportsGenerateContent || !model.has("name")) return@mapNotNull null
-                        model.get("name").asString
+                        val name = model.get("name").asString
+                        if (!name.startsWith("models/")) return@mapNotNull null
+                        ModelCandidate(
+                            name = name,
+                            inputTokenLimit = model.getAsLongOrZero("inputTokenLimit"),
+                            outputTokenLimit = model.getAsLongOrZero("outputTokenLimit")
+                        )
                     }
+                    .sortedWith(
+                        compareByDescending<ModelCandidate> { it.inputTokenLimit }
+                            .thenByDescending { it.outputTokenLimit }
+                            .thenBy { it.name }
+                    )
+                    .map { it.name }
 
-                preferredModelNames.firstOrNull { it in supportedModels }
-                    ?: supportedModels.firstOrNull { it.contains("flash") }
-                    ?: supportedModels.firstOrNull()
+                if (supportedModels.isNotEmpty()) {
+                    cachedModelCandidates = supportedModels
+                }
+                supportedModels
             }
         } catch (_: Exception) {
-            null
+            cachedModelCandidates
         }
+    }
+
+    private data class ModelCandidate(
+        val name: String,
+        val inputTokenLimit: Long,
+        val outputTokenLimit: Long
+    )
+
+    private fun JsonObject.getAsLongOrZero(memberName: String): Long {
+        if (!has(memberName)) return 0L
+        return runCatching { get(memberName).asLong }.getOrDefault(0L)
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
