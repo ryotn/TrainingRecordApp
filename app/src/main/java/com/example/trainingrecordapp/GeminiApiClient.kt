@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.TimeUnit
 
 data class TrainingRecord(
     val exerciseName: String,
@@ -26,7 +27,12 @@ data class ExerciseSet(
 
 class GeminiApiClient(private val apiKey: String) {
 
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
     private val gson = Gson()
     @Volatile
     private var cachedModelPath: String? = null
@@ -99,7 +105,8 @@ class GeminiApiClient(private val apiKey: String) {
 
                 for (modelPath in modelCandidates) {
                     val request = Request.Builder()
-                        .url("https://generativelanguage.googleapis.com/v1beta/$modelPath:generateContent?key=$apiKey")
+                        .url("https://generativelanguage.googleapis.com/v1beta/$modelPath:generateContent")
+                        .header("x-goog-api-key", apiKey)
                         .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
                         .build()
 
@@ -114,8 +121,9 @@ class GeminiApiClient(private val apiKey: String) {
                             return@withContext parseTrainingRecord(responseBody)
                         }
 
-                        lastError = Exception("API error ${response.code} ($modelPath): $responseBody")
-                        if (response.code == 404) {
+                        val statusCode = response.code
+                        lastError = Exception("API error $statusCode ($modelPath)")
+                        if (statusCode == 404 || statusCode == 429 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504) {
                             if (cachedModelPath == modelPath) {
                                 cachedModelPath = null
                             }
@@ -167,10 +175,10 @@ class GeminiApiClient(private val apiKey: String) {
     }
 
     private fun extractJsonPayload(text: String): String {
-        val stripped = text
-            .replace("```json", "", ignoreCase = true)
-            .replace("```", "")
-            .trim()
+        var stripped = text.trim()
+        stripped = stripped.replaceFirst(Regex("^```(?:json)?\\s*\\n?", RegexOption.IGNORE_CASE), "")
+        stripped = stripped.replaceFirst(Regex("\\n?```\\s*$"), "")
+        stripped = stripped.trim()
         val firstBraceIndex = stripped.indexOf('{')
         val lastBraceIndex = stripped.lastIndexOf('}')
         return if (firstBraceIndex >= 0 && lastBraceIndex > firstBraceIndex) {
@@ -198,7 +206,8 @@ class GeminiApiClient(private val apiKey: String) {
 
     private fun resolveSupportedModelPath(): String? {
         val request = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
+            .url("https://generativelanguage.googleapis.com/v1beta/models")
+            .header("x-goog-api-key", apiKey)
             .get()
             .build()
 
