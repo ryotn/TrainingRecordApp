@@ -3,7 +3,7 @@
     <string name="app_name">トレーニング記録アプリ</string>
 
     <!-- Buttons -->
-    <string name="capture_image">📷 画像を撮影</string>
+    <string name="capture_image">📷 カメラを起動して撮影</string>
     <string name="analyze">🔍 Gemini AIで解析</string>
     <string name="save_to_health_connect">💪 ヘルスコネクトへ保存</string>
     <string name="clear_images">🗑 画像をクリア</string>
@@ -19,6 +19,7 @@
     <!-- Status -->
     <string name="image_count">%d枚の画像</string>
     <string name="image_count_zero">画像なし（カメラで撮影してください）</string>
+    <string name="capture_guide">まず「カメラを起動して撮影」を押してください</string>
     <string name="analyzing">解析中...</string>
     <string name="captured_count">撮影済み: %d枚</string>
     <string name="captured_count_zero">撮影済み: 0枚（最大3枚）</string>

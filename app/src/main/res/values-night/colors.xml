@@ -5,4 +5,8 @@
     <color name="camera_control_panel_text">#FFFFFFFF</color>
     <color name="result_background">#FF1E1E1E</color>
     <color name="result_text">#FFFFFFFF</color>
+    <color name="action_button_bg">#FF82AAFF</color>
+    <color name="action_button_text">#FF0A0A0A</color>
+    <color name="outlined_button_text">#FF9FBCFF</color>
+    <color name="subtle_text">#FFBBBBBB</color>
 </resources>

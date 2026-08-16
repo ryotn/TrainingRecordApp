@@ -12,4 +12,8 @@
     <color name="camera_control_panel_text">#FF111111</color>
     <color name="result_background">#FFEEEEEE</color>
     <color name="result_text">#FF111111</color>
+    <color name="action_button_bg">#FF5B8CFF</color>
+    <color name="action_button_text">#FFFFFFFF</color>
+    <color name="outlined_button_text">#FF5B8CFF</color>
+    <color name="subtle_text">#FF4A4A4A</color>
 </resources>
