@@ -32,7 +32,7 @@ object HealthConnectManager {
 
     fun openHealthConnectPermissionSettings(context: Context): Boolean {
         val intents = listOf<Intent>(
-            HealthConnectClient.Companion.getHealthConnectManageDataIntent(context, HEALTH_CONNECT_PACKAGE_NAME),
+            HealthConnectClient.Companion.getHealthConnectManageDataIntent(context, context.packageName),
             Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS").apply {
                 putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
             },
