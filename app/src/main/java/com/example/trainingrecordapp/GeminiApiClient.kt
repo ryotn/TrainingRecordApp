@@ -34,9 +34,12 @@ class GeminiApiClient(private val apiKey: String) {
         .callTimeout(30, TimeUnit.SECONDS)
         .build()
     private val gson = Gson()
-    @Volatile
-    private var cachedModelCandidates: List<String> = emptyList()
-    private val modelCacheLock = Any()
+
+    companion object {
+        @Volatile
+        private var cachedModelCandidates: List<String> = emptyList()
+        private val modelCacheLock = Any()
+    }
 
     private val systemPrompt = """
         あなたはトレーニングマシンの結果画面の画像を解析するアシスタントです。
