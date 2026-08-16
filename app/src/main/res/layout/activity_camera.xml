@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@color/camera_background">
 
     <androidx.camera.view.PreviewView
         android:id="@+id/viewFinder"
@@ -19,7 +19,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@android:color/black"
+        android:background="@color/camera_control_panel_background"
         android:padding="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -30,7 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/captured_count_zero"
-            android:textColor="@android:color/white"
+            android:textColor="@color/camera_control_panel_text"
             android:gravity="center"
             android:layout_marginBottom="8dp" />
 
@@ -46,7 +46,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/cancel"
-                android:textColor="@android:color/white"
+                android:textColor="@color/camera_control_panel_text"
                 android:layout_marginEnd="8dp" />
 
             <com.google.android.material.button.MaterialButton
