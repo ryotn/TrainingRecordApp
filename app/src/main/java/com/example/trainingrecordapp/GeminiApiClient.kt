@@ -84,39 +84,67 @@ class GeminiApiClient(private val apiKey: String) {
                     add("contents", gson.toJsonTree(listOf(content)))
                 }
 
-                val modelPath = resolveSupportedModelPath() ?: "models/gemini-2.0-flash"
-                val request = Request.Builder()
-                    .url("https://generativelanguage.googleapis.com/v1beta/$modelPath:generateContent?key=$apiKey")
-                    .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
-                    .build()
+                val modelCandidates = buildList {
+                    resolveSupportedModelPath()?.let(::add)
+                    addAll(preferredModelNames)
+                }
+                    .distinct()
 
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: return@withContext Result.failure(
-                    Exception("Empty response from Gemini API")
-                )
+                var notFoundCount = 0
+                var lastNotFoundError: Exception? = null
 
-                if (!response.isSuccessful) {
+                for (modelPath in modelCandidates) {
+                    val request = Request.Builder()
+                        .url("https://generativelanguage.googleapis.com/v1beta/$modelPath:generateContent?key=$apiKey")
+                        .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                        .build()
+
+                    client.newCall(request).execute().use { response ->
+                        val responseBody = response.body?.string()
+                            ?: return@withContext Result.failure(Exception("Empty response from Gemini API"))
+
+                        if (response.isSuccessful) {
+                            return@withContext parseTrainingRecord(responseBody)
+                        }
+
+                        if (response.code == 404) {
+                            notFoundCount += 1
+                            lastNotFoundError = Exception("API error 404 ($modelPath): $responseBody")
+                            return@use
+                        }
+
+                        return@withContext Result.failure(
+                            Exception("API error ${response.code} ($modelPath): $responseBody")
+                        )
+                    }
+                }
+
+                if (notFoundCount == modelCandidates.size) {
                     return@withContext Result.failure(
-                        Exception("API error ${response.code} ($modelPath): $responseBody")
+                        lastNotFoundError ?: Exception("No compatible Gemini model found for generateContent")
                     )
                 }
 
-                val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
-                val text = responseJson
-                    .getAsJsonArray("candidates")
-                    .get(0).asJsonObject
-                    .getAsJsonObject("content")
-                    .getAsJsonArray("parts")
-                    .get(0).asJsonObject
-                    .get("text").asString
-
-                val cleanedText = text.trim().removePrefix("```json").removeSuffix("```").trim()
-                val record = gson.fromJson(cleanedText, TrainingRecord::class.java)
-                Result.success(record)
+                return@withContext Result.failure(Exception("Failed to generate content"))
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
+
+    private fun parseTrainingRecord(responseBody: String): Result<TrainingRecord> {
+        val responseJson = gson.fromJson(responseBody, JsonObject::class.java)
+        val text = responseJson
+            .getAsJsonArray("candidates")
+            .get(0).asJsonObject
+            .getAsJsonObject("content")
+            .getAsJsonArray("parts")
+            .get(0).asJsonObject
+            .get("text").asString
+
+        val cleanedText = text.trim().removePrefix("```json").removeSuffix("```").trim()
+        val record = gson.fromJson(cleanedText, TrainingRecord::class.java)
+        return Result.success(record)
+    }
 
     private fun resolveSupportedModelPath(): String? {
         val request = Request.Builder()
