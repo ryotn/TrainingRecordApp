@@ -105,7 +105,10 @@ class GeminiApiClient(private val apiKey: String) {
 
                     client.newCall(request).execute().use { response ->
                         val responseBody = response.body?.string()
-                            ?: return@withContext Result.failure(Exception("Empty response from Gemini API"))
+                        if (responseBody == null) {
+                            lastError = Exception("Empty response from Gemini API ($modelPath)")
+                            return@use
+                        }
 
                         if (response.isSuccessful) {
                             return@withContext parseTrainingRecord(responseBody)
