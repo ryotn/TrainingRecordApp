@@ -23,7 +23,8 @@ data class TrainingRecord(
     val totalVolumeKg: Double = 0.0,
     val caloriesKcal: Double = 0.0,
     val sets: List<ExerciseSet> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    var captureTimeMs: Long? = null
 )
 
 data class ExerciseSet(
