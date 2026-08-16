@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity() {
             updateCapturedImages()
             binding.tvResult.text = ""
             binding.btnSaveToHealthConnect.isEnabled = false
+            binding.btnSaveToHealthConnect.tag = null
         }
 
         binding.btnChangeApiKey.setOnClickListener {
