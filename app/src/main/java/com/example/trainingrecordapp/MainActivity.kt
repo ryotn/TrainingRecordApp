@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val capturedBitmaps = mutableListOf<Bitmap>()
     private var pendingSaveAfterPermissionRequest = false
+    private var retrySaveAfterPermissionFromDeniedDialog = false
+    private var isHealthPermissionRequestInFlight = false
 
     // Camera permission launcher
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -47,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private val healthPermissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { granted ->
+        isHealthPermissionRequestInFlight = false
         val shouldSave = pendingSaveAfterPermissionRequest
         pendingSaveAfterPermissionRequest = false
         if (granted.containsAll(HealthConnectManager.REQUIRED_PERMISSIONS)) {
@@ -54,6 +57,7 @@ class MainActivity : AppCompatActivity() {
                 lifecycleScope.launch { saveToHealthConnect() }
             }
         } else {
+            retrySaveAfterPermissionFromDeniedDialog = shouldSave
             showHealthConnectPermissionDeniedDialog()
         }
     }
@@ -245,7 +249,10 @@ class MainActivity : AppCompatActivity() {
                 saveToHealthConnect()
             } else {
                 pendingSaveAfterPermissionRequest = true
-                healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                if (!isHealthPermissionRequestInFlight) {
+                    isHealthPermissionRequestInFlight = true
+                    healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                }
             }
         }
     }
@@ -256,7 +263,10 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             if (!HealthConnectManager.hasAllPermissions(this@MainActivity)) {
                 pendingSaveAfterPermissionRequest = false
-                healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                if (!isHealthPermissionRequestInFlight) {
+                    isHealthPermissionRequestInFlight = true
+                    healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                }
             }
         }
     }
@@ -313,7 +323,12 @@ class MainActivity : AppCompatActivity() {
                 .setTitle(getString(R.string.health_connect_permission_title))
                 .setMessage(getString(R.string.health_connect_permission_message))
                 .setPositiveButton(getString(R.string.request_permission)) { _, _ ->
-                    healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                    pendingSaveAfterPermissionRequest = retrySaveAfterPermissionFromDeniedDialog
+                    retrySaveAfterPermissionFromDeniedDialog = false
+                    if (!isHealthPermissionRequestInFlight) {
+                        isHealthPermissionRequestInFlight = true
+                        healthPermissionLauncher.launch(HealthConnectManager.REQUIRED_PERMISSIONS)
+                    }
                 }
                 .setNegativeButton(getString(R.string.health_connect_open_settings)) { _, _ ->
                     if (!HealthConnectManager.openHealthConnectPermissionSettings(this)) {
