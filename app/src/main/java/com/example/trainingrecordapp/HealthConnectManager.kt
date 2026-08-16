@@ -20,7 +20,7 @@ object HealthConnectManager {
     )
 
     fun getSdkStatus(context: Context): Int =
-        HealthConnectClient.getSdkStatus(context, HEALTH_CONNECT_PACKAGE_NAME)
+        HealthConnectClient.getSdkStatus(context)
 
     fun openHealthConnectSettings(context: Context) {
         val intent = Intent(Intent.ACTION_VIEW).apply {
