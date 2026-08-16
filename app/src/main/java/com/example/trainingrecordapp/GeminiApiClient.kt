@@ -28,6 +28,8 @@ class GeminiApiClient(private val apiKey: String) {
 
     private val client = OkHttpClient()
     private val gson = Gson()
+    @Volatile
+    private var cachedModelPath: String? = null
     private val preferredModelNames = listOf(
         "models/gemini-2.5-flash",
         "models/gemini-2.0-flash",
@@ -85,7 +87,11 @@ class GeminiApiClient(private val apiKey: String) {
                 }
 
                 val modelCandidates = buildList {
-                    resolveSupportedModelPath()?.let(::add)
+                    cachedModelPath?.let(::add)
+                    resolveSupportedModelPath()?.let {
+                        cachedModelPath = it
+                        add(it)
+                    }
                     addAll(preferredModelNames)
                 }
                     .distinct()
@@ -108,6 +114,9 @@ class GeminiApiClient(private val apiKey: String) {
 
                         lastError = Exception("API error ${response.code} ($modelPath): $responseBody")
                         if (response.code == 404) {
+                            if (cachedModelPath == modelPath) {
+                                cachedModelPath = null
+                            }
                             return@use
                         }
 
