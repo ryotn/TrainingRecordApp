@@ -157,6 +157,49 @@ class MainActivity : AppCompatActivity() {
         checkAndRequestApiKey()
         setupButtons()
         checkHealthConnectPermissionOnStartup()
+        showTopScreen()
+    }
+
+    private fun showTopScreen() {
+        binding.layoutTop.visibility = View.VISIBLE
+        binding.layoutImage.visibility = View.GONE
+        binding.layoutResult.visibility = View.GONE
+    }
+
+    private fun showImageScreen() {
+        binding.layoutTop.visibility = View.GONE
+        binding.layoutImage.visibility = View.VISIBLE
+        binding.layoutResult.visibility = View.GONE
+    }
+
+    private fun showResultScreen() {
+        binding.layoutTop.visibility = View.GONE
+        binding.layoutImage.visibility = View.GONE
+        binding.layoutResult.visibility = View.VISIBLE
+    }
+
+    private fun populateResultUI(record: TrainingRecord) {
+        binding.etExerciseName.setText(record.exerciseName)
+        binding.etMachineName.setText(record.machineName)
+        binding.etDuration.setText(if (record.trainingDurationMinutes > 0) record.trainingDurationMinutes.toString() else "")
+        binding.etCalories.setText(if (record.caloriesKcal > 0.0) record.caloriesKcal.toString() else "")
+        binding.etTotalReps.setText(if (record.totalReps > 0) record.totalReps.toString() else "")
+        binding.etTotalWeight.setText(if (record.totalVolumeKg > 0.0) record.totalVolumeKg.toString() else "")
+        binding.etNotes.setText(record.notes)
+
+        binding.layoutSets.removeAllViews()
+        record.sets.forEach { set ->
+            val setView = layoutInflater.inflate(R.layout.item_set, binding.layoutSets, false)
+            val tvSetNumber = setView.findViewById<android.widget.TextView>(R.id.tvSetNumber)
+            val etReps = setView.findViewById<android.widget.EditText>(R.id.etReps)
+            val etWeight = setView.findViewById<android.widget.EditText>(R.id.etWeight)
+
+            tvSetNumber.text = set.setNumber.toString()
+            etReps.setText(if (set.reps > 0) set.reps.toString() else "")
+            etWeight.setText(if (set.weightKg > 0.0) set.weightKg.toString() else "")
+
+            binding.layoutSets.addView(setView)
+        }
     }
 
     private fun checkAndRequestApiKey() {
@@ -222,14 +265,23 @@ class MainActivity : AppCompatActivity() {
         binding.btnClearImages.setOnClickListener {
             capturedBitmaps.clear()
             updateCapturedImages()
-            binding.tvResult.text = ""
             binding.btnSaveToHealthConnect.isEnabled = false
             binding.btnSaveToHealthConnect.tag = null
             captureTimeMs = null
+            showTopScreen()
         }
 
         binding.btnChangeApiKey.setOnClickListener {
             showApiKeyInputDialog()
+        }
+
+        binding.btnDiscard.setOnClickListener {
+            capturedBitmaps.clear()
+            updateCapturedImages()
+            binding.btnSaveToHealthConnect.isEnabled = false
+            binding.btnSaveToHealthConnect.tag = null
+            captureTimeMs = null
+            showTopScreen()
         }
     }
 
@@ -266,7 +318,6 @@ class MainActivity : AppCompatActivity() {
 
         binding.progressBar.visibility = View.VISIBLE
         binding.btnAnalyze.isEnabled = false
-        binding.tvResult.text = getString(R.string.analyzing)
 
         lifecycleScope.launch {
             val client = GeminiApiClient(apiKey)
@@ -276,13 +327,13 @@ class MainActivity : AppCompatActivity() {
 
             result.onSuccess { record ->
                 record.captureTimeMs = captureTimeMs
-                val json = GsonBuilder().setPrettyPrinting().create().toJson(record)
-                binding.tvResult.text = json
                 binding.btnSaveToHealthConnect.isEnabled = true
                 binding.btnSaveToHealthConnect.tag = record
+
+                showResultScreen()
+                populateResultUI(record)
             }.onFailure { e ->
-                binding.tvResult.text = getString(R.string.analysis_error, e.message)
-                Toast.makeText(this@MainActivity, getString(R.string.analysis_failed), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, getString(R.string.analysis_failed) + ": " + e.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -345,14 +396,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun saveToHealthConnect() {
-        val record = binding.btnSaveToHealthConnect.tag as? TrainingRecord ?: return
+        val originalRecord = binding.btnSaveToHealthConnect.tag as? TrainingRecord ?: return
 
-        binding.progressBar.visibility = View.VISIBLE
-        val result = HealthConnectManager.recordTraining(this, record)
-        binding.progressBar.visibility = View.GONE
+        // Read updated values from UI
+        val updatedSets = mutableListOf<ExerciseSet>()
+        for (i in 0 until binding.layoutSets.childCount) {
+            val setView = binding.layoutSets.getChildAt(i)
+            val tvSetNumber = setView.findViewById<android.widget.TextView>(R.id.tvSetNumber)
+            val etReps = setView.findViewById<android.widget.EditText>(R.id.etReps)
+            val etWeight = setView.findViewById<android.widget.EditText>(R.id.etWeight)
+
+            val setNumber = tvSetNumber.text.toString().toIntOrNull() ?: (i + 1)
+            val reps = etReps.text.toString().toIntOrNull() ?: 0
+            val weight = etWeight.text.toString().toDoubleOrNull() ?: 0.0
+
+            if (reps > 0 || weight > 0.0) {
+                updatedSets.add(ExerciseSet(setNumber = setNumber, reps = reps, weightKg = weight))
+            }
+        }
+
+        val updatedRecord = originalRecord.copy(
+            exerciseName = binding.etExerciseName.text.toString(),
+            machineName = binding.etMachineName.text.toString(),
+            trainingDurationMinutes = binding.etDuration.text.toString().toIntOrNull() ?: 0,
+            caloriesKcal = binding.etCalories.text.toString().toDoubleOrNull() ?: 0.0,
+            totalReps = binding.etTotalReps.text.toString().toIntOrNull() ?: 0,
+            totalVolumeKg = binding.etTotalWeight.text.toString().toDoubleOrNull() ?: 0.0,
+            notes = binding.etNotes.text.toString(),
+            sets = updatedSets
+        )
+        updatedRecord.captureTimeMs = originalRecord.captureTimeMs
+
+        binding.progressBarSave.visibility = View.VISIBLE
+        binding.btnSaveToHealthConnect.isEnabled = false
+        val result = HealthConnectManager.recordTraining(this, updatedRecord)
+        binding.progressBarSave.visibility = View.GONE
+        binding.btnSaveToHealthConnect.isEnabled = true
 
         result.onSuccess {
             Toast.makeText(this, getString(R.string.saved_to_health_connect), Toast.LENGTH_SHORT).show()
+            capturedBitmaps.clear()
+            updateCapturedImages()
+            binding.btnSaveToHealthConnect.isEnabled = false
+            binding.btnSaveToHealthConnect.tag = null
+            captureTimeMs = null
+            showTopScreen()
         }.onFailure { e ->
             Toast.makeText(this, getString(R.string.save_failed, e.message), Toast.LENGTH_LONG).show()
         }
@@ -367,11 +455,24 @@ class MainActivity : AppCompatActivity() {
         binding.btnAnalyze.isEnabled = capturedBitmaps.isNotEmpty()
         binding.btnClearImages.isEnabled = capturedBitmaps.isNotEmpty()
 
+        binding.imageContainer.removeAllViews()
+
         if (capturedBitmaps.isNotEmpty()) {
-            binding.ivPreview.setImageBitmap(capturedBitmaps.last())
-            binding.ivPreview.visibility = View.VISIBLE
-        } else {
-            binding.ivPreview.visibility = View.GONE
+            showImageScreen()
+            capturedBitmaps.forEach { bitmap ->
+                val imageView = android.widget.ImageView(this).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(0, 0, 0, 16)
+                    }
+                    adjustViewBounds = true
+                    scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                    setImageBitmap(bitmap)
+                }
+                binding.imageContainer.addView(imageView)
+            }
         }
     }
 
