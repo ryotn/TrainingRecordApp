@@ -4,6 +4,7 @@
 
     <!-- Buttons -->
     <string name="capture_image">📷 カメラを起動して撮影</string>
+    <string name="select_from_gallery">🖼 ギャラリーから選択</string>
     <string name="analyze">🔍 Gemini AIで解析</string>
     <string name="save_to_health_connect">💪 ヘルスコネクトへ保存</string>
     <string name="clear_images">🗑 画像をクリア</string>
@@ -25,7 +26,7 @@
     <string name="capture_guide">まず「カメラを起動して撮影」を押してください</string>
     <string name="analyzing">解析中...</string>
     <string name="captured_count">撮影済み: %d枚</string>
-    <string name="captured_count_zero">撮影済み: 0枚（最大3枚）</string>
+    <string name="captured_count_zero">撮影済み: 0枚（最大5枚）</string>
     <string name="photo_captured">写真を撮影しました（%d枚目）</string>
 
     <!-- API Key dialog -->
@@ -60,4 +61,5 @@
     <string name="capture_failed">撮影失敗: %s</string>
     <string name="max_photos_reached">最大%d枚まで撮影できます</string>
     <string name="capture_at_least_one">少なくとも1枚撮影してください</string>
+    <string name="max_total_photos_reached">合計で最大%d枚までしか選択できません</string>
 </resources>

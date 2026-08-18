@@ -23,7 +23,8 @@ data class TrainingRecord(
     val totalVolumeKg: Double = 0.0,
     val caloriesKcal: Double = 0.0,
     val sets: List<ExerciseSet> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    var captureTimeMs: Long? = null
 )
 
 data class ExerciseSet(
@@ -69,6 +70,7 @@ class GeminiApiClient(private val apiKey: String) {
         画像にある数値・情報は可能な限り漏れなく反映してください。
         trainingDurationMinutes は「分」で返してください。
         情報が読み取れない項目は、文字列は空文字、数値は0、配列は空配列を使用してください。
+        もし画像内にマシン名やエクササイズ名が明記されていない場合は、画像の他の情報からどういう運動をしていたかを予測して、exerciseNameとmachineNameを補完してください。
     """.trimIndent()
 
     suspend fun parseTrainingImages(bitmaps: List<Bitmap>): Result<TrainingRecord> =
@@ -86,11 +88,11 @@ class GeminiApiClient(private val apiKey: String) {
                 for (bitmap in bitmaps) {
                     val base64 = bitmapToBase64(bitmap)
                     val inlineData = JsonObject().apply {
-                        addProperty("mime_type", "image/jpeg")
+                        addProperty("mimeType", "image/jpeg")
                         addProperty("data", base64)
                     }
                     val imagePart = JsonObject().apply {
-                        add("inline_data", inlineData)
+                        add("inlineData", inlineData)
                     }
                     parts.add(imagePart)
                 }

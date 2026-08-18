@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -22,6 +23,10 @@ import com.google.gson.GsonBuilder
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
+import androidx.exifinterface.media.ExifInterface
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingSaveAfterPermissionRequest = false
     private var retrySaveAfterPermissionFromDeniedDialog = false
     private var isHealthPermissionRequestInFlight = false
+    private var captureTimeMs: Long? = null
 
     // Camera permission launcher
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -72,6 +78,14 @@ class MainActivity : AppCompatActivity() {
                 paths.mapNotNull { path ->
                     try {
                         val file = File(path)
+                        if (captureTimeMs == null) {
+                            try {
+                                val exif = ExifInterface(file.absolutePath)
+                                captureTimeMs = getExifDateTimeMs(exif)
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        }
                         val bitmap = BitmapFactory.decodeFile(file.absolutePath)
                         file.delete()
                         bitmap
@@ -84,6 +98,55 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private val galleryLauncher = registerForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(5)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            val remainingSlots = CameraActivity.MAX_PHOTOS - capturedBitmaps.size
+            val urisToProcess = uris.take(remainingSlots)
+            if (uris.size > remainingSlots) {
+                Toast.makeText(this, getString(R.string.max_total_photos_reached, CameraActivity.MAX_PHOTOS), Toast.LENGTH_SHORT).show()
+            }
+            urisToProcess.mapNotNull { uri ->
+                try {
+                    contentResolver.openInputStream(uri)?.use { inputStream ->
+                        BitmapFactory.decodeStream(inputStream)
+                    }?.also {
+                        if (captureTimeMs == null) {
+                            try {
+                                contentResolver.openInputStream(uri)?.use { stream ->
+                                    val exif = ExifInterface(stream)
+                                    captureTimeMs = getExifDateTimeMs(exif)
+                                }
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }.let { bitmaps ->
+                capturedBitmaps.addAll(bitmaps)
+                updateCapturedImages()
+            }
+        }
+    }
+
+    private fun getExifDateTimeMs(exif: ExifInterface): Long? {
+        val dateTimeStr = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+        if (dateTimeStr != null) {
+            return try {
+                val sdf = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
+                sdf.timeZone = TimeZone.getDefault()
+                sdf.parse(dateTimeStr)?.time
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +199,14 @@ class MainActivity : AppCompatActivity() {
             checkCameraPermissionAndOpen()
         }
 
+        binding.btnSelectGallery.setOnClickListener {
+            if (capturedBitmaps.size >= CameraActivity.MAX_PHOTOS) {
+                Toast.makeText(this, getString(R.string.max_total_photos_reached, CameraActivity.MAX_PHOTOS), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+
         binding.btnAnalyze.setOnClickListener {
             if (capturedBitmaps.isEmpty()) {
                 Toast.makeText(this, getString(R.string.no_images), Toast.LENGTH_SHORT).show()
@@ -154,6 +225,7 @@ class MainActivity : AppCompatActivity() {
             binding.tvResult.text = ""
             binding.btnSaveToHealthConnect.isEnabled = false
             binding.btnSaveToHealthConnect.tag = null
+            captureTimeMs = null
         }
 
         binding.btnChangeApiKey.setOnClickListener {
@@ -203,6 +275,7 @@ class MainActivity : AppCompatActivity() {
             binding.btnAnalyze.isEnabled = true
 
             result.onSuccess { record ->
+                record.captureTimeMs = captureTimeMs
                 val json = GsonBuilder().setPrettyPrinting().create().toJson(record)
                 binding.tvResult.text = json
                 binding.btnSaveToHealthConnect.isEnabled = true

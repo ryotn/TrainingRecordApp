@@ -67,20 +67,25 @@ object HealthConnectManager {
         withContext(Dispatchers.IO) {
             try {
                 val client = HealthConnectClient.getOrCreate(context)
-                val now = Instant.now()
+                val endTime = if (record.captureTimeMs != null) {
+                    Instant.ofEpochMilli(record.captureTimeMs!!)
+                } else {
+                    Instant.now()
+                }
+
                 val zoneId = ZoneId.systemDefault()
                 val durationMinutes = if (record.trainingDurationMinutes > 0) {
                     record.trainingDurationMinutes.toLong()
                 } else {
                     DEFAULT_SESSION_DURATION_MINUTES
                 }
-                val startTime = now.minusSeconds(durationMinutes * 60L)
+                val startTime = endTime.minusSeconds(durationMinutes * 60L)
 
                 val exerciseSession = ExerciseSessionRecord(
                     startTime = startTime,
                     startZoneOffset = zoneId.rules.getOffset(startTime),
-                    endTime = now,
-                    endZoneOffset = zoneId.rules.getOffset(now),
+                    endTime = endTime,
+                    endZoneOffset = zoneId.rules.getOffset(endTime),
                     metadata = Metadata.manualEntry(),
                     exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
                     title = record.exerciseName,
