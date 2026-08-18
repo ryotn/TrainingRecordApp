@@ -5,8 +5,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.units.Energy
+import androidx.health.connect.client.units.Mass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -17,7 +22,8 @@ object HealthConnectManager {
     private const val DEFAULT_SESSION_DURATION_MINUTES = 60L
 
     val REQUIRED_PERMISSIONS = setOf(
-        HealthPermission.getWritePermission(ExerciseSessionRecord::class)
+        HealthPermission.getWritePermission(ExerciseSessionRecord::class),
+        HealthPermission.getWritePermission(ActiveCaloriesBurnedRecord::class)
     )
 
     fun getSdkStatus(context: Context): Int =
@@ -81,6 +87,24 @@ object HealthConnectManager {
                 }
                 val startTime = endTime.minusSeconds(durationMinutes * 60L)
 
+                val segments = mutableListOf<ExerciseSegment>()
+                if (record.sets.isNotEmpty()) {
+                    val durationPerSetMillis = (endTime.toEpochMilli() - startTime.toEpochMilli()) / record.sets.size
+                    var currentSegmentStartTime = startTime
+                    for (set in record.sets) {
+                        val currentSegmentEndTime = currentSegmentStartTime.plusMillis(durationPerSetMillis)
+                        segments.add(
+                            ExerciseSegment(
+                                startTime = currentSegmentStartTime,
+                                endTime = currentSegmentEndTime,
+                                segmentType = ExerciseSegment.EXERCISE_SEGMENT_TYPE_WEIGHTLIFTING,
+                                repetitions = set.reps
+                            )
+                        )
+                        currentSegmentStartTime = currentSegmentEndTime
+                    }
+                }
+
                 val exerciseSession = ExerciseSessionRecord(
                     startTime = startTime,
                     startZoneOffset = zoneId.rules.getOffset(startTime),
@@ -89,42 +113,28 @@ object HealthConnectManager {
                     metadata = Metadata.manualEntry(),
                     exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
                     title = record.exerciseName,
-                    notes = buildNotes(record)
+                    notes = record.notes,
+                    segments = segments
                 )
 
-                client.insertRecords(listOf(exerciseSession))
+                val recordsToInsert = mutableListOf<Record>(exerciseSession)
+
+                if (record.caloriesKcal > 0.0) {
+                    val caloriesRecord = ActiveCaloriesBurnedRecord(
+                        startTime = startTime,
+                        startZoneOffset = zoneId.rules.getOffset(startTime),
+                        endTime = endTime,
+                        endZoneOffset = zoneId.rules.getOffset(endTime),
+                        energy = Energy.kilocalories(record.caloriesKcal),
+                        metadata = Metadata.manualEntry()
+                    )
+                    recordsToInsert.add(caloriesRecord)
+                }
+
+                client.insertRecords(recordsToInsert)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
-
-    private fun buildNotes(record: TrainingRecord): String {
-        val sb = StringBuilder()
-        if (record.exerciseName.isNotBlank()) {
-            sb.appendLine("エクササイズ: ${record.exerciseName}")
-        }
-        if (record.machineName.isNotBlank()) {
-            sb.appendLine("マシン: ${record.machineName}")
-        }
-        if (record.trainingDurationMinutes > 0) {
-            sb.appendLine("トレーニング時間: ${record.trainingDurationMinutes}分")
-        }
-        if (record.totalReps > 0) {
-            sb.appendLine("総レップ数: ${record.totalReps}回")
-        }
-        if (record.totalVolumeKg > 0.0) {
-            sb.appendLine("総重量: ${record.totalVolumeKg}kg")
-        }
-        if (record.caloriesKcal > 0.0) {
-            sb.appendLine("消費カロリー: ${record.caloriesKcal}kcal")
-        }
-        record.sets.forEach { set ->
-            sb.appendLine("セット ${set.setNumber}: ${set.reps}回 x ${set.weightKg}kg")
-        }
-        if (record.notes.isNotBlank()) {
-            sb.appendLine("備考: ${record.notes}")
-        }
-        return sb.toString().trim()
-    }
 }
