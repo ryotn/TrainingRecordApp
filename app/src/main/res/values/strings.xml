@@ -62,17 +62,4 @@
     <string name="max_photos_reached">最大%d枚まで撮影できます</string>
     <string name="capture_at_least_one">少なくとも1枚撮影してください</string>
     <string name="max_total_photos_reached">合計で最大%d枚までしか選択できません</string>
-
-    <!-- Labels for Result Screen -->
-    <string name="label_exercise_name">種目名</string>
-    <string name="label_machine_name">マシン名</string>
-    <string name="label_duration">時間 (分)</string>
-    <string name="label_calories">消費カロリー (kcal)</string>
-    <string name="label_total_reps">総レップ数</string>
-    <string name="label_total_weight">総重量 (kg)</string>
-    <string name="label_notes">メモ</string>
-    <string name="label_sets">セット</string>
-    <string name="discard_result">結果を破棄</string>
-    <string name="label_set_reps">レップ</string>
-    <string name="label_set_weight">重量(kg)</string>
 </resources>
